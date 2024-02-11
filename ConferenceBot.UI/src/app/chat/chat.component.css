@@ -1,0 +1,26 @@
+.container {
+  display: grid;
+  grid-template-rows: 1fr auto;
+  height: 100%;
+}
+
+.assistant {
+  font-style: italic;
+  margin-left: 10%;
+}
+
+.message-input {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  padding: 15px;
+  background-color: lightgray;
+  margin-bottom: 15px;
+}
+
+.message-input button {
+  margin-left: 10px;
+}
+
+.message-input input {
+  padding: 15px;
+}

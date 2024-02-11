@@ -1,0 +1,25 @@
+/* You can add global styles to this file, and also import other style files */
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  height: 100vh;
+  margin: 0;
+  padding: 0;
+  margin-left: 15px;
+  margin-right: 15px;
+}
+
+.top-container {
+  max-width: 800px;
+  margin-left: auto;
+  margin-right: auto;
+  height: 100%;
+}
+
+table {
+  border-collapse: collapse;
+}
+
+table, th, td {
+  border: 1px solid black;
+  padding: 3px;
+}
