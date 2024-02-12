@@ -7,21 +7,9 @@
     <RootNamespace>ConferenceBot</RootNamespace>
 
     <!-- 
-      See https://learn.microsoft.com/en-us/dotnet/core/deploying/native-aot/#publish-native-aot-using-the-cli
-    -->
-    <!-- <PublishAot>true</PublishAot> -->
-
-    <!-- 
       See https://learn.microsoft.com/en-US/dotnet/core/runtime-config/globalization#invariant-mode
     -->
     <InvariantGlobalization>true</InvariantGlobalization>
-
-    <!-- 
-      For demonstration purposes, we write the generated code to disk
-      Read more at https://learn.microsoft.com/en-us/dotnet/csharp/roslyn-sdk/source-generators-overview
-    -->
-    <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
-    <UserSecretsId>6ff27c12-b912-435a-bfa8-d1319948956f</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>
