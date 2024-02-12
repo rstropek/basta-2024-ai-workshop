@@ -11,7 +11,7 @@ public interface IChatSession
 
     void AddUserMessage(string message);
     bool LastMessageIsFromUser { get; }
-    Task<string> RunWithoutStreaming(string message, CancellationToken cancellationToken);
+    Task<string> RunBasic(CancellationToken cancellationToken);
     IAsyncEnumerable<string> Run(CancellationToken cancellationToken);
     IEnumerable<ChatMessage> GetMessageHistory();
 }
@@ -26,6 +26,7 @@ public partial class ChatSession(OpenAIClient client, IOptions<OpenAISettings> s
     /// <remarks>
     /// Necessary because Azure API model classes are not thread-safe. For more details
     /// see https://devblogs.microsoft.com/azure-sdk/lifetime-management-and-thread-safety-guarantees-of-azure-sdk-net-clients/#thread-safety-models-are-not-thread-safe.
+    /// </remarks>
     private readonly object OptionsLock = new();
 
     public ChatCompletionsOptions Options { get; private set; } = new(
@@ -45,23 +46,13 @@ public partial class ChatSession(OpenAIClient client, IOptions<OpenAISettings> s
     {
         get => Options.Messages.LastOrDefault() is ChatRequestUserMessage;
     }
-
-    public async Task<string> RunWithoutStreaming(string message, CancellationToken cancellationToken)
+    
+    public async Task<string> RunBasic(CancellationToken cancellationToken)
     {
-        lock (OptionsLock) { Options.Messages.Add(new ChatRequestUserMessage(message)); }
-
         var completions = await client.GetChatCompletionsAsync(Options, cancellationToken);
-
-        if (completions.Value.Choices.Count == 0)
-        {
-            logger.LogError("No completions returned from OpenAI");
-            return ErrorMessage;
-        }
-
-        var assistantResponse = completions.Value.Choices[0].Message.Content;
-        lock (OptionsLock) { Options.Messages.Add(new ChatRequestAssistantMessage(assistantResponse)); }
-
-        return assistantResponse;
+        var content = completions.Value.Choices[0].Message.Content;
+        lock (OptionsLock) { Options.Messages.Add(new ChatRequestAssistantMessage(content)); }
+        return content;
     }
 
     public async IAsyncEnumerable<string> Run([EnumeratorCancellation] CancellationToken cancellationToken)
@@ -85,7 +76,7 @@ public partial class ChatSession(OpenAIClient client, IOptions<OpenAISettings> s
         IAiFunctions aiFunctions, [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         // Make sure that the functions are added to the chat completions options
-        aiFunctions.AddFunctionsToChatCompletionsOptions(Options);
+        aiFunctions.EnsureFunctionsAreInCompletionsOptions(Options);
 
         bool repeat;
         do
@@ -155,4 +146,3 @@ public enum Sender
 }
 
 public record ChatMessage(Sender Sender, string Message);
-

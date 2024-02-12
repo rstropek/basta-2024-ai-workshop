@@ -5,12 +5,19 @@ using ConferenceProgram;
 
 namespace ConferenceBot;
 
+/// <summary>
+/// Abstraction for <see cref="AiFunctions"/> to make it easier to test.
+/// </summary>
 public interface IAiFunctions
 {
-    void AddFunctionsToChatCompletionsOptions(ChatCompletionsOptions options);
+    void EnsureFunctionsAreInCompletionsOptions(ChatCompletionsOptions options);
     ChatRequestToolMessage Execute(FunctionCall call);
 }
 
+/// <summary>
+/// Implements function tools for our example.
+/// </summary>
+/// <param name="sessions">Collection of conference samples</param>
 public class AiFunctions(IEnumerable<Session> sessions) : IAiFunctions
 {
     private readonly ChatCompletionsFunctionToolDefinition GetExpertsTool = new(
@@ -22,6 +29,10 @@ public class AiFunctions(IEnumerable<Session> sessions) : IAiFunctions
                 who are speaking at one or more sessions. The function also returns
                 the company where the export works.
                 """,
+            // Parameters must be in JSON Schema format. You could create the JSON using
+            // System.Text.Json, but specifying the JSON as a string is also an option
+            // (and sometimes easier). It would be nice to derive the schema from code
+            // (e.g. using a source generator), but that is not supported yet.
             Parameters = BinaryData.FromString("""
                 {
                     "type": "object",
@@ -39,9 +50,6 @@ public class AiFunctions(IEnumerable<Session> sessions) : IAiFunctions
                 Each record contains the session name, and the start and end time of the session.
                 The list of experts can be obtained using the `getExperts` function.
                 """,
-            // Currently, JSON schema must be specified as a string as reflection-based
-            // serialization is not supported with NativeAOT. See also
-            // https://github.com/Azure/azure-sdk-for-net/issues/41893
             Parameters = BinaryData.FromString("""
                 {
                     "type": "object",
@@ -60,7 +68,11 @@ public class AiFunctions(IEnumerable<Session> sessions) : IAiFunctions
                 """)
         });
 
-    public void AddFunctionsToChatCompletionsOptions(ChatCompletionsOptions options)
+    /// <summary>
+    /// Ensures that the function tools are present in the given options.
+    /// </summary>
+    /// <param name="options">Options to which the function tools should be added</param>
+    public void EnsureFunctionsAreInCompletionsOptions(ChatCompletionsOptions options)
     {
         if (options.Tools.Count == 0)
         {
@@ -69,15 +81,25 @@ public class AiFunctions(IEnumerable<Session> sessions) : IAiFunctions
         }
     }
 
+    /// <summary>
+    /// Execute a given function call
+    /// </summary>
+    /// <param name="call"></param>
+    /// <returns>
+    /// Result of the function call
+    /// </returns>
     public ChatRequestToolMessage Execute(FunctionCall call)
     {
-        ChatRequestToolMessage result;
+        // Note that we do no throw an exception here if something goes wrong. Instead, we
+        // let ChatGPT know, that something is wrong so that it can fix its own mistake.
+
+        string resultJson;
         switch (call.Name)
         {
             case "getExperts":
                 {
                     var experts = sessions.GetExperts().ToArray();
-                    result = new ChatRequestToolMessage(JsonSerializer.Serialize(experts, AiFunctionsSerializerContext.Default.ExpertSummaryArray)!, call.Id);
+                    resultJson = JsonSerializer.Serialize(experts, AiFunctionsSerializerContext.Default.ExpertSummaryArray);
                     break;
                 }
             case "getSessionsByExpert":
@@ -85,32 +107,32 @@ public class AiFunctions(IEnumerable<Session> sessions) : IAiFunctions
                     var args = JsonSerializer.Deserialize(call.ArgumentJson.ToString(), AiFunctionsSerializerContext.Default.SessionsByExpertArguments);
                     if (args == null || string.IsNullOrEmpty(args.Forename) || string.IsNullOrEmpty(args.Surname))
                     {
-                        result = new ChatRequestToolMessage(JsonSerializer.Serialize(new ErrorResponse("Invalid arguments"), AiFunctionsSerializerContext.Default.ErrorResponse)!, call.Id);
+                        resultJson = JsonSerializer.Serialize(new ErrorResponse("Invalid arguments"), AiFunctionsSerializerContext.Default.ErrorResponse);
                         break;
                     }
 
                     var sessionsByExpert = sessions.GetSessionsByExpert(args.Forename, args.Surname).ToArray();
-                    result = new ChatRequestToolMessage(JsonSerializer.Serialize(sessionsByExpert, AiFunctionsSerializerContext.Default.SessionSummaryArray)!, call.Id);
+                    resultJson = JsonSerializer.Serialize(sessionsByExpert, AiFunctionsSerializerContext.Default.SessionSummaryArray);
                     break;
                 }
             default:
                 {
-                    result = new ChatRequestToolMessage(JsonSerializer.Serialize(new ErrorResponse("Unknown function name"), AiFunctionsSerializerContext.Default.ErrorResponse)!, call.Id);
+                    resultJson = JsonSerializer.Serialize(new ErrorResponse("Unknown function name"), AiFunctionsSerializerContext.Default.ErrorResponse);
                     break;
                 }
         }
 
-        return result;
+        return new ChatRequestToolMessage(resultJson!, call.Id);
     }
+
+    internal record ErrorResponse(string Error);
+
+    internal record SessionsByExpertArguments(string Forename, string Surname);
 }
 
 [JsonSourceGenerationOptions(PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase)]
 [JsonSerializable(typeof(ExpertSummary[]))]
 [JsonSerializable(typeof(SessionSummary[]))]
-[JsonSerializable(typeof(SessionsByExpertArguments))]
-[JsonSerializable(typeof(ErrorResponse))]
+[JsonSerializable(typeof(AiFunctions.SessionsByExpertArguments))]
+[JsonSerializable(typeof(AiFunctions.ErrorResponse))]
 internal partial class AiFunctionsSerializerContext : JsonSerializerContext { }
-
-record SessionsByExpertArguments(string Forename, string Surname);
-
-record ErrorResponse(string Error);

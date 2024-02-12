@@ -34,6 +34,11 @@ export class ChatService {
     return response;
   }
 
+  addAndRunBasic(sessionId: string, message: string): Observable<string> {
+    return this.client.post(`${this.baseUrl}/chat/complete/${sessionId}/messages`, { message })
+      .pipe(mergeMap(() => this.client.get<string>(`${this.baseUrl}/chat/complete/${sessionId}/run-basic`)));
+  }
+
   addAndRun(sessionId: string, message: string): Observable<string> {
     return this.client.post(`${this.baseUrl}/chat/complete/${sessionId}/messages`, { message })
       .pipe(mergeMap(() => {

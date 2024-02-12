@@ -36,6 +36,7 @@ export class ChatComponent implements OnInit {
 
     this.messageHistory.update(h => [...h, { sender: Sender.User, message }]);
     this.chat.addAndRun(this.sessionId, message).subscribe(assistantMessage => {
+    //this.chat.addAndRunBasic(this.sessionId, message).subscribe(assistantMessage => {
       assistantMessage = assistantMessage.replaceAll('\\n', '\n');
 
       let append = true;

@@ -1,0 +1,16 @@
+{
+    "recommendations": [
+        "ms-dotnettools.csdevkit",
+        "ms-dotnettools.csharp",
+        "formulahendry.dotnet-test-explorer",
+        "mikestead.dotenv",
+        "EditorConfig.EditorConfig",
+        "usernamehw.errorlens",
+        "GitHub.copilot",
+        "GitHub.copilot-chat",
+        "codezombiech.gitignore",
+        "PKief.material-icon-theme",
+        "humao.rest-client",
+        "wayou.vscode-todo-highlight"
+    ]
+}

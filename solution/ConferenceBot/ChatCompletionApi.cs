@@ -2,19 +2,23 @@ using System.Text.Json.Serialization;
 
 namespace ConferenceBot;
 
+/// <summary>
+/// Implements the chat completion API for this sample
+/// </summary>
 public static class ChatCompletionsApi
 {
     public static RouteGroupBuilder MapChatCompletions(this IEndpointRouteBuilder routes)
     {
         var group = routes.MapGroup("/chat").RequireRateLimiting(RateLimitOptionsExtensions.PolicyName);
 
+        // This is the endpoint that creates a new chat session
         group.MapPost("/complete", (IChatManager chatManager) =>
         {
             var session = chatManager.CreateSession();
             return Results.Created((Uri?)null, new SessionCreationResponse(session.Id));
         });
 
-
+        // This endpoint adds a message to the chat session
         group.MapPost("/complete/{sessionId}/messages", (IChatManager chatManager, Guid sessionId, AddMessageRequest message) =>
         {
             if (chatManager.GetSession(sessionId) is not ChatSession session) { return Results.NotFound(); }
@@ -22,7 +26,26 @@ public static class ChatCompletionsApi
             return Results.Ok();
         });
 
-        group.MapGet("/complete/{sessionId}/run", async (HttpContext ctx, IChatManager chatManager, Guid sessionId, 
+        // This endpoint triggers AI processing of the messages in the chat session.
+        group.MapGet("/complete/{sessionId}/run-basic", async (IChatManager chatManager, Guid sessionId, CancellationToken cancellationToken) =>
+        {
+            if (chatManager.GetSession(sessionId) is not ChatSession session)
+            {
+                return Results.NotFound();
+            }
+
+            if (!session.LastMessageIsFromUser)
+            {
+                return Results.NoContent();
+            }
+
+            var content = await session.RunBasic(cancellationToken);
+            return Results.Ok(content);
+        });
+
+        // This endpoint triggers AI processing of the messages in the chat session.
+        // It returns a Server-Sent Events stream of messages from the AI.
+        group.MapGet("/complete/{sessionId}/run", async (HttpContext ctx, IChatManager chatManager, Guid sessionId,
             IStreamProcessor streamProcessor, IAiFunctions aiFunctions, CancellationToken cancellationToken) =>
         {
             if (chatManager.GetSession(sessionId) is not ChatSession session)
@@ -57,6 +80,7 @@ public static class ChatCompletionsApi
             }
         });
 
+        // This endpoint returns the message history of the chat session
         group.MapGet("/complete/{sessionId}/messages", (IChatManager chatManager, Guid sessionId) =>
         {
             if (chatManager.GetSession(sessionId) is not ChatSession session) { return Results.NotFound(); }
