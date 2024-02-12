@@ -1,0 +1,19 @@
+<div class="container">
+  <div class="message-history">
+    @for (m of messageHistory(); track m) {
+      <div [ngClass]="m.sender">
+        <markdown [data]="m.message" [inline]="false"></markdown>
+      </div>
+    }
+  </div>
+
+  <div class="message-input">
+    <input
+      type="text"
+      [formControl]="userMessage"
+      placeholder="Enter your message to the bot here..."
+      (keydown.enter)="sendMessage()"
+    />
+    <button (click)="sendMessage()">Send</button>
+  </div>
+</div>
